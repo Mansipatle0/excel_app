@@ -1,0 +1,20 @@
+{% extends 'excel_app/base.html' %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Upload Excel</h5>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="mb-3">
+        {{ form.file.label_tag }}<br>
+        {{ form.file }}
+      </div>
+      <div class="mb-3">
+        {{ form.source.label_tag }}<br>
+        {{ form.source }}
+      </div>
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

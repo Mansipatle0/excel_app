@@ -1,0 +1,364 @@
+{% extends 'excel_app/base.html' %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Home page</h5>
+
+    {% if records %}
+      <!-- Upload Form -->
+      <form method="POST" enctype="multipart/form-data" action="{% url 'excel_app:upload_excel' %}" style="margin-bottom:20px;">
+  {% csrf_token %}
+  <!--<label><b>Upload New Excel:</b></label><br>-->
+  <div class="d-flex justify-content-between align-items-center flex-wrap">
+    <div>
+     <!--- <input type="file" name="excel_file" required>
+      <input type="text" name="source" placeholder="Enter source" required>
+      <button type="submit" class="btn btn-primary mt-1 mt-md-0">➕ Add</button>-->
+    </div>
+
+    <div class="mt-2 mt-md-0 d-flex gap-2">
+      <button type="button" class="btn btn-secondary" id="addNewBtn">
+        ➕ Add New
+      </button>
+      <button type="button" class="btn btn-success" id="broadcastBtn">
+        📢 Broadcast
+      </button>
+    </div>
+  </div>
+</form>
+
+      <!-- Bulk Delete Form (single form for all checkboxes) -->
+      <form method="POST" action="{% url 'excel_app:bulk_delete' %}">
+        {% csrf_token %}
+        <table class="table table-hover align-middle">
+          <thead class="table-primary">
+            <tr>
+              <th>Sr no</th>
+              <!-- <th><input type="checkbox" id="selectAll"></th> -->
+              <th>Excel Name</th>
+              <th>Source</th>
+              <th>Count</th>
+              <th>View Data</th>
+              <th>Date added</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <!-- <td><input type="checkbox" name="selected_records" value="{{ r.id }}"></td> -->
+              <td>{{ r.excel_name }}</td>
+              <td>{{ r.source }}</td>
+              <td>{{ r.count }}</td>
+              <td>
+                <a href="{% url 'excel_app:view_excel_data' r.id %}" class="btn btn-info btn-sm">View</a>
+              </td>
+              <td>{{ r.date_added|date:"Y-m-d H:i" }}</td>
+              <td>
+                <a href="{% url 'excel_app:delete_record' r.id %}" 
+                   class="btn btn-danger btn-sm"
+                   onclick="return confirm('Delete this record?')">
+                   Delete
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- <button type="submit" class="btn btn-danger mt-2" onclick="return confirm('Delete selected records?')">
+          🗑 Delete Selected
+        </button> -->
+      </form>
+
+    {% else %}
+      <div class="text-center py-5">
+        <p class="lead">No records found. Please upload an Excel file.</p>
+        <a class="btn btn-primary" href="{% url 'excel_app:upload' %}">Upload First Excel</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- JS for Select All -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const selectAll = document.getElementById("selectAll");
+  if (selectAll) {
+    selectAll.addEventListener("click", function() {
+      const checkboxes = document.querySelectorAll('input[name="selected_records"]');
+      checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+  }
+});
+</script>
+
+<!-- Checklist Popup Modal -->
+<div class="modal fade" id="broadcastModal" tabindex="-1" aria-labelledby="broadcastModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="broadcastModalLabel">Broadcast Checklist</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="broadcastForm">
+          {% csrf_token %}
+          <div class="mb-3">
+  <label for="excelSelect" class="form-label">Select Excel File</label>
+  <select id="excelSelect" name="excelSelect" class="form-select" required>
+    <option value="">-- Choose Excel File --</option>
+    {% for r in records %}
+      <option value="{{ r.id }}">{{ r.excel_name }}</option>
+    {% endfor %}
+  </select>
+</div>
+          <div class="mb-3">
+            <label for="note" class="form-label">Note</label>
+            <textarea id="note" name="note" class="form-control" rows="3" placeholder="Enter your broadcast note..."></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="schedule" class="form-label">Schedule At</label>
+            <input type="datetime-local" id="schedule" name="schedule" class="form-control">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Start Broadcast</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const broadcastBtn = document.getElementById("broadcastBtn");
+  const checkboxes = document.querySelectorAll("input[type='checkbox'][name='selected_records']");
+  const broadcastModal = new bootstrap.Modal(document.getElementById("broadcastModal"));
+  const scheduleInput = document.getElementById("schedule");
+
+  // ✅ When Broadcast Button is clicked
+  broadcastBtn.addEventListener("click", function () {
+    const selected = Array.from(checkboxes).filter(cb => cb.checked);
+
+    //if (selected.length === 0) {
+      //alert("⚠️ Please select at least one Excel file to broadcast.");
+      //return;
+    //}
+
+    // Show modal if at least one selected
+    broadcastModal.show();
+  });
+
+  // ✅ Improve user experience with the datetime picker
+  if (scheduleInput) {
+    // Track when the input gains focus (calendar opens)
+    scheduleInput.addEventListener("focus", function() {
+      this.setAttribute("data-was-focused", "true");
+    });
+    
+    // When the value changes, it means the user has likely selected a date/time
+    scheduleInput.addEventListener("change", function() {
+      // Small delay to ensure the value is set
+      setTimeout(function() {
+        if (scheduleInput.value) {
+          // Try to focus on the submit button to make it easier for user to continue
+          const submitBtn = document.querySelector("#broadcastForm button[type='submit']");
+          if (submitBtn) {
+            // Briefly blur and refocus to potentially close the calendar
+            scheduleInput.blur();
+            setTimeout(function() {
+              submitBtn.focus();
+            }, 50);
+          }
+        }
+      }, 100);
+    });
+    
+    // Additional enhancement: Close calendar on Enter key
+    scheduleInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && this.value) {
+        e.preventDefault();
+        const submitBtn = document.querySelector("#broadcastForm button[type='submit']");
+        if (submitBtn) {
+          scheduleInput.blur(); // Close calendar
+          setTimeout(function() {
+            submitBtn.focus(); // Focus submit button
+          }, 50);
+        }
+      }
+    });
+  }
+
+  // ✅ Broadcast Form Submit Logic
+  const form = document.getElementById("broadcastForm");
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    // Collect data
+    const selectedExcel = document.getElementById("excelSelect").value.trim();
+    const note = document.getElementById("note").value.trim();
+    const schedule = document.getElementById("schedule").value;
+    const selectedIds = Array.from(checkboxes)
+      .filter(cb => cb.checked)
+      .map(cb => cb.value);
+
+    if (!note || !schedule) {
+      alert("⚠️ Please fill in both Note and Schedule.");
+      return;
+    }
+
+    // Show loader on button
+    const submitBtn = form.querySelector("button[type='submit']");
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <span class="spinner-border spinner-border-sm"></span>
+      Processing...
+    `;
+
+    // Real API POST call with CSRF token
+    try {
+      const response = await fetch("/api/broadcast/", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+          note: note,
+          schedule: schedule,
+          selected_ids: selectedIds,
+          excel_id : selectedExcel,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Hide modal
+        broadcastModal.hide();
+
+        // Success message popup
+        alert("✅ " + data.message);
+
+        // ✅ Redirect to checklist page
+        window.location.href = `/checklist/${selectedExcel}/?note=${encodeURIComponent(note)}&schedule=${encodeURIComponent(schedule)}&selected=${encodeURIComponent(selectedIds.join(','))}`;
+      } else {
+        // Handle specific error cases
+        let errorMessage = data.message || "Broadcast failed";
+        if (data.status_code === 401) {
+          errorMessage += "\n\n⚠️ WhatsApp API token may have expired. Please contact administrator to update the token.";
+        }
+        throw new Error(errorMessage);
+      }
+
+    } catch (error) {
+      console.error("Error:", error);
+      alert("❌ " + (error.message || "Something went wrong!"));
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = "Start Broadcast";
+    }
+  });
+});
+</script>
+
+<!-- Add New Excel Popup Modal -->
+<div class="modal fade" id="addNewModal" tabindex="-1" aria-labelledby="addNewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="addNewModalLabel">Upload New Excel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form id="addNewForm" method="POST" enctype="multipart/form-data" action="{% url 'excel_app:upload_excel' %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Choose Excel File</label>
+            <input type="file" name="file" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Source</label>
+            <input type="text" name="source" class="form-control" placeholder="Enter source" required>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelector("#addNewModal form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  
+  const form = this;
+  const formData = new FormData(form);
+  const uploadBtn = form.querySelector("button[type='submit']");
+  const originalBtnText = uploadBtn.innerHTML;
+  
+  // Show uploading state immediately
+  uploadBtn.innerHTML = "⏳ Uploading...";
+  uploadBtn.disabled = true;
+  
+  // Submit via AJAX with explicit headers
+  fetch(form.action, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+  .then(response => {
+    // Always try to parse as JSON first
+    return response.json().catch(() => {
+      // If JSON parsing fails, return a generic error
+      return {
+        success: false,
+        message: "Upload completed but UI update failed. Please refresh the page."
+      };
+    });
+  })
+  .then(data => {
+    if (data.success) {
+      // Close modal
+      bootstrap.Modal.getInstance(document.getElementById('addNewModal')).hide();
+      
+      // Show success message
+      alert("✅ " + data.message);
+      
+      // Reload the page to show the new file
+      location.reload();
+    } else {
+      alert("❌ " + data.message);
+      uploadBtn.innerHTML = originalBtnText;
+      uploadBtn.disabled = false;
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert("❌ Upload failed. Please check your connection and try again.");
+    uploadBtn.innerHTML = originalBtnText;
+    uploadBtn.disabled = false;
+  });
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // Existing broadcast script hai toh uske neeche ye add karo
+  const addNewBtn = document.getElementById("addNewBtn");
+  const addNewModal = new bootstrap.Modal(document.getElementById("addNewModal"));
+
+  addNewBtn.addEventListener("click", function () {
+    addNewModal.show();
+  });
+});
+</script>
+
+
+{% endblock %}

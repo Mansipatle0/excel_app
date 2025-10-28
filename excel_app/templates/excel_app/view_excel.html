@@ -1,0 +1,11 @@
+{% extends 'excel_app/base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h4>Preview: {{ record.excel_name }}</h4>
+  <p><b>Source:</b> {{ record.source }}</p>
+  <div class="table-responsive">
+    {{ data_html|safe }}
+  </div>
+  <a href="{% url 'excel_app:table_view' %}" class="btn btn-secondary mt-3">Back to Table</a>
+</div>
+{% endblock %}

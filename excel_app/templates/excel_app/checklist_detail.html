@@ -1,0 +1,31 @@
+{% extends 'excel_app/base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow">
+    <div class="card-header bg-primary text-white">
+      <h4>📋 Broadcast Checklist Summary</h4>
+    </div>
+    <div class="card-body">
+      <h5 class="text-success mb-3">✅ Broadcast Scheduled Successfully!</h5>
+
+      <p><b>Excel Name:</b> {{ record.excel_name }}</p>
+      <p><b>Source:</b> {{ record.source }}</p>
+      <p><b>Total Rows:</b> {{ record.count }}</p>
+      <p><b>Date Uploaded:</b> {{ record.date_added|date:"Y-m-d H:i" }}</p>
+
+      <hr>
+
+      <h6>🗒️ Broadcast Details</h6>
+      <p><b>Note:</b> {{ note|default:"(no note provided)" }}</p>
+      <p><b>Schedule At:</b> {{ schedule|default:"(not scheduled)" }}</p>
+      <p><b>Selected IDs:</b> {{ selected_ids|default:"(none)" }}</p>
+
+      <p class="text-muted mt-3"><small>Generated at {{ generated_time|date:"Y-m-d H:i:s" }}</small></p>
+
+      <div class="mt-4">
+        <a href="{% url 'excel_app:table' %}" class="btn btn-secondary">⬅ Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
