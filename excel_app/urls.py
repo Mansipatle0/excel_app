@@ -14,6 +14,5 @@ urlpatterns = [
     path('bulk-delete/', views.bulk_delete, name='bulk_delete'),
     path('api/broadcast/', views.broadcast_api, name='broadcast_api'),
     path('checklist/<int:excel_id>/', views.checklist_detail, name='checklist_detail'),
-    
-    
+    path('download-sample/', views.download_sample_excel, name='download_sample'),
 ]

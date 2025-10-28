@@ -5,14 +5,71 @@ from django.contrib import messages
 from .models import ExcelUpload, Checklist
 from .forms import UploadForm, ChecklistForm
 import pandas as pd
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
+import io
 
 if TYPE_CHECKING:
     from django.db.models.manager import Manager
     from django.core.exceptions import ObjectDoesNotExist
     from django.http import HttpRequest, HttpResponse
+
+
+def checklist_detail(request, excel_id):  # type: ignore
+    record = get_object_or_404(ExcelUpload, id=excel_id)
+
+    # Agar POST data se aaya ho (broadcast form se)
+    note = request.GET.get('note', '')
+    schedule = request.GET.get('schedule', '')
+    selected_ids = request.GET.get('selected', '')
+
+    context = {
+        'record': record,
+        'note': note,
+        'schedule': schedule,
+        'selected_ids': selected_ids,
+        'generated_time': datetime.now(),
+    }
+    return render(request, 'excel_app/checklist_detail.html', context)
+
+
+def download_sample_excel(request):  # type: ignore
+    import pandas as pd
+    from django.http import HttpResponse
+    import tempfile
+    import os
+    
+    # Create sample data
+    data = {
+        'Name': ['John Doe', 'Jane Smith'],
+        'Phone': ['9876543210', '9876501234']
+    }
+    
+    df = pd.DataFrame(data)
+    
+    # Create a temporary file
+    with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+        tmp_path = tmp.name
+        
+    # Write DataFrame to Excel
+    df.to_excel(tmp_path, index=False, engine='openpyxl')
+    
+    # Read the file content
+    with open(tmp_path, 'rb') as f:
+        file_content = f.read()
+    
+    # Clean up temporary file
+    os.unlink(tmp_path)
+    
+    # Prepare response
+    response = HttpResponse(
+        file_content,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=sample.xlsx'
+    
+    return response
 
 
 def table_view(request):  # type: ignore
@@ -253,7 +310,7 @@ def broadcast_api(request):  # type: ignore
             # Call WhatsApp API for each phone number
             whatsapp_url = "https://graph.facebook.com/v22.0/223427244188062/messages"
             whatsapp_headers = {
-                "Authorization": "Bearer EAAMO9wPuFi0BPyGwQudM1fuWZCvqsfu7DpHZAd3c4mClMUPFZAlWunwbp0fZBqLXmujJvTCBCbjiOPdH6LAsvu25Q41M0BPkNAwFjZAct2nejMtJb5UhbZB7MJ34BXi10xJtEs0jW8Qt6xZBD2PijSiq84aIZCZBXZBEzjNAiZBeT6sx9bMWOxRrZAkFWG1t0Tmk9YoZBQTFK82gdHFW4hHPhe2m3iih8LFlqmIpwgOGoJbbDDbFt7Fj3t4SeeSpLRZAfmtLM2",
+                "Authorization": "Bearer EAAMO9wPuFi0BPxLeZBxRi5ZCBtLrIZBpqJP5BpvNbgE1gxZADWgMEw3SbPWUzQyQHAhwjjIwBLufQC16pGf1o4KYgWOH0Hm10qUkFLTxfXVSiqHCn4DQFfLEZCE9VribnFhkZBAvuN2oWap59uhURana4TK5n4fMZC36HlBD28AUpvQDmi87a9ZBcs0FenymxW10tpjwy7RcP8mYKZBxnlDAExg89mRwn8f5AcEmKNFYTLe21qoKsU2PCotFmtQhzDAwZD",
                 "Content-Type": "application/json"
             }
             
@@ -333,19 +390,3 @@ def broadcast_api(request):  # type: ignore
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
-def checklist_detail(request, excel_id):  # type: ignore
-    record = get_object_or_404(ExcelUpload, id=excel_id)
-
-    # Agar POST data se aaya ho (broadcast form se)
-    note = request.GET.get('note', '')
-    schedule = request.GET.get('schedule', '')
-    selected_ids = request.GET.get('selected', '')
-
-    context = {
-        'record': record,
-        'note': note,
-        'schedule': schedule,
-        'selected_ids': selected_ids,
-        'generated_time': datetime.now(),
-    }
-    return render(request, 'excel_app/checklist_detail.html', context)
