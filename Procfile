@@ -1,0 +1,1 @@
+web: python -m gunicorn excel_upload_project.wsgi:application

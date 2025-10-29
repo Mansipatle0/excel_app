@@ -1,3 +1,7 @@
-Django>=4.2
+Django==3.2.25
 pandas
 openpyxl
+requests
+psycopg2-binary
+gunicorn
+python-decouple
